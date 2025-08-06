@@ -1,0 +1,609 @@
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
+
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <iostream>
+
+#include "interpreter_semantic_error.hpp"
+#include "interpreter.hpp"
+#include "expression.hpp"
+
+Expression run(const std::string & program){
+  
+  std::istringstream iss(program);
+    
+  Interpreter interp;
+    
+  bool ok = interp.parse(iss);
+  if(!ok){
+    std::cerr << "Failed to parse: " << program << std::endl; 
+  }
+  REQUIRE(ok == true);
+
+  Expression result;
+  REQUIRE_NOTHROW(result = interp.eval());
+
+  return result;
+}
+
+bool failed_run(const std::string & program){
+  
+  std::istringstream iss(program);
+    
+  Interpreter interp;
+    
+  bool ok = interp.parse(iss);
+  if(!ok){
+    std::cerr << "Failed to parse: " << program << std::endl; 
+  }
+  REQUIRE(ok == true);
+
+  Expression result;
+
+  try
+  {
+    result = interp.eval();
+  }
+  catch(...)
+  {
+    return 1;
+  }
+  
+  return 0;
+}
+
+TEST_CASE( "Test Interpreter parser with expected input", "[interpreter]" ) {
+
+  std::string program = "(begin (define r 10) (* pi (* r r)))";
+
+  std::istringstream iss(program);
+ 
+  Interpreter interp;
+
+  bool ok = interp.parse(iss);
+
+  REQUIRE(ok == true);
+}
+
+TEST_CASE( "Test Interpreter parser with numerical literals", "[interpreter]" ) {
+
+  std::vector<std::string> programs = {"(1)", "(+1)", "(+1e+0)", "(1e-0)"};
+  
+  for(auto program : programs){
+    std::istringstream iss(program);
+ 
+    Interpreter interp;
+
+    bool ok = interp.parse(iss);
+
+    REQUIRE(ok == true);
+  }
+}
+
+TEST_CASE( "Test Interpreter parser with truncated input", "[interpreter]" ) {
+
+  {
+    std::string program = "(f";
+    std::istringstream iss(program);
+  
+    Interpreter interp;
+    bool ok = interp.parse(iss);
+    REQUIRE(ok == false);
+  }
+  
+  {
+    std::string program = "(begin (define r 10) (* pi (* r r";
+    std::istringstream iss(program);
+
+    Interpreter interp;
+    bool ok = interp.parse(iss);
+    REQUIRE(ok == false);
+  }
+}
+
+TEST_CASE( "Test Interpreter parser with extra input", "[interpreter]" ) {
+
+  std::string program = "(begin (define r 10) (* pi (* r r))) )";
+  std::istringstream iss(program);
+
+  Interpreter interp;
+
+  bool ok = interp.parse(iss);
+
+  REQUIRE(ok == false);
+}
+
+TEST_CASE( "Test Interpreter parser with single non-keyword", "[interpreter]" ) {
+
+  std::string program = "hello";
+  std::istringstream iss(program);
+  
+  Interpreter interp;
+
+  bool ok = interp.parse(iss);
+
+  REQUIRE(ok == false);
+}
+
+TEST_CASE( "Test Interpreter parser with empty input", "[interpreter]" ) {
+
+  std::string program;
+  std::istringstream iss(program);
+  
+  Interpreter interp;
+
+  bool ok = interp.parse(iss);
+
+  REQUIRE(ok == false);
+}
+
+TEST_CASE( "Test Interpreter parser with empty expression", "[interpreter]" ) {
+
+  std::string program = "( )";
+  std::istringstream iss(program);
+  
+  Interpreter interp;
+
+  bool ok = interp.parse(iss);
+
+  REQUIRE(ok == false);
+}
+
+TEST_CASE( "Test Interpreter parser with bad number string", "[interpreter]" ) {
+
+  std::string program = "(1abc)";
+  std::istringstream iss(program);
+  
+  Interpreter interp;
+
+  bool ok = interp.parse(iss);
+
+  REQUIRE(ok == false);
+}
+
+TEST_CASE( "Test Interpreter parser with incorrect input. Regression Test", "[interpreter]" ) {
+
+  std::string program = "(+ 1 2) (+ 3 4)";
+  std::istringstream iss(program);
+  
+  Interpreter interp;
+
+  bool ok = interp.parse(iss);
+
+  REQUIRE(ok == false); 
+}
+
+TEST_CASE( "Test Interpreter result with literal expressions", "[interpreter]" ) {
+
+  { // Boolean True
+    std::string program = "(True)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(true));
+  }
+
+  { // Boolean False
+    std::string program = "(False)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(false));
+  }
+  
+  { // Number
+    std::string program = "(4)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(4.));
+  }
+
+  { // Symbol
+    std::string program = "(pi)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(atan2(0, -1)));
+  }
+
+}
+
+TEST_CASE( "Test Interpreter result with simple procedures (add)", "[interpreter]" ) {
+
+  { // add, binary case
+    std::string program = "(+ 1 2)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(3.));
+  }
+
+  { // add, binary case
+    std::string program = "(+ 1 (+ 2 3))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(6.));
+  }
+  
+  { // add, 3-ary case
+    std::string program = "(+ 1 2 3)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(6.));
+  }
+
+  { // add, 6-ary case
+    std::string program = "(+ 1 2 3 4 5 6)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(21.));
+  }
+
+  { // add, invalid case
+    std::string program = "(+ 1)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+}
+  
+TEST_CASE( "Test Interpreter special form: if", "[interpreter]" ) {
+
+  {
+    std::string program = "(if True (4) (-4))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(4.));
+  }
+  
+  {
+    std::string program = "(if False (4) (-4))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(-4.));
+  }
+
+  { //invalid case
+    std::string program = "(if False (-4))";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+}
+
+TEST_CASE( "Test Interpreter special forms: begin and define", "[interpreter]" ) {
+
+  {
+    std::string program = "(define answer 42)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(42.));
+  }
+
+  {
+    std::string program = "(begin (define answer 42)\n(answer))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(42.));
+  }
+  
+  {
+    std::string program = "(begin (define answer (+ 9 11)) (answer))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(20.));
+  }
+
+  {
+    std::string program = "(begin (define a 1) (define b 1) (+ a b))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(2.));
+  }
+}
+
+TEST_CASE( "Test a complex expression", "[interpreter]" ) {
+
+  {
+    std::string program = "(+ (+ 10 1) (+ 30 (+ 1 1)))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(43.));
+  }
+}
+
+TEST_CASE( "Test Interpreter result with simple procedures (sub)", "[interpreter]" ) {
+
+  { // sub, binary case
+    std::string program = "(- 1 2)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(-1.));
+  }
+
+  { // sub, binary case
+    std::string program = "(- 2 1)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(1.));
+  }
+
+  { // sub, uniary case
+    std::string program = "(- 1)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(-1.));
+  }
+
+  { //invalid sub
+    std::string program = "(- 1 2 9)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);;
+  }
+
+  {
+    std::string program = "(begin (define answer (- 9 11)) (answer))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(-2.));
+  }
+
+  {
+    std::string program = "(begin (define a 4) (define b 1) (- a b))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(3.));
+  }
+
+  {
+    std::string program = "(- (+ 10 1) (- 30 (- 1 1)))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(-19.));
+  }
+  
+}
+
+TEST_CASE( "Test Interpreter result with simple procedures (div)", "[interpreter]" ) {
+
+  {
+    std::string program = "(/ 1 2)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(0.5));
+  }
+
+
+  { 
+    std::string program = "(/ 1)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);;
+  }
+
+  {
+    std::string program = "(begin (define answer (/ 22 11)) (answer))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(2.));
+  }
+
+  {
+    std::string program = "(begin (define a 4) (define b 1) (/ a b))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(4.));
+  }
+  
+}
+
+TEST_CASE( "Test Interpreter result with simple procedures (mult)", "[interpreter]" ) {
+
+  { // add, binary case
+    std::string program = "(* 1 2)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(2.));
+  }
+
+  { // add, binary case
+    std::string program = "(* 1 (* 2 3))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(6.));
+  }
+  
+  { // add, 3-ary case
+    std::string program = "(* 1 2 3)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(6.));
+  }
+
+  { // add, 6-ary case
+    std::string program = "(* 1 2 3 4 5 6)";
+    Expression result = run(program);
+    REQUIRE(result == Expression(720.));
+  }
+
+  { // add, invalid case
+    std::string program = "(* 1)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+}
+
+TEST_CASE( "Test relational procedures", "[interpreter]" ) {
+
+  {
+    std::vector<std::string> programs = {"(< 1 2)",
+					 "(<= 1 2)",
+					 "(<= 1 1)",
+					 "(> 2 1)",
+					 "(>= 2 1)",
+					 "(>= 2 2)",
+					 "(= 4 4)"};
+    for(auto s : programs){
+      Expression result = run(s);
+      REQUIRE(result == Expression(true));
+    }
+  }
+
+  {
+    std::vector<std::string> programs = {"(< 2 1)",
+					 "(<= 2 1)",
+					 "(<= 1 0)",
+					 "(> 1 2)",
+					 "(>= 1 2)",
+					 "(>= 2 3)",
+					 "(= 0 4)"};
+    for(auto s : programs){
+      Expression result = run(s);
+      REQUIRE(result == Expression(false));
+    }
+  }
+}
+
+TEST_CASE( "Test arithmetic procedures", "[interpreter]" ) {
+
+  {
+    std::vector<std::string> programs = {"(+ 1 -2)",
+					 "(+ -3 1 1)",
+					 "(- 1)",
+					 "(- 1 2)",
+					 "(* 1 -1)",
+					 "(* 1 1 -1)",
+					 "(/ -1 1)",
+					 "(/ 1 -1)"};
+
+    for(auto s : programs){
+      Expression result = run(s);
+      REQUIRE(result == Expression(-1.));
+    }
+  }
+}
+
+TEST_CASE( "Test logical procedures", "[interpreter]" ) {
+
+  REQUIRE(run("(not True)") == Expression(false));
+  REQUIRE(run("(not False)") == Expression(true));
+
+  REQUIRE(run("(and True True)") == Expression(true));
+  REQUIRE(run("(and True False)") == Expression(false));
+  REQUIRE(run("(and False True)") == Expression(false));
+  REQUIRE(run("(and False False)") == Expression(false));
+  REQUIRE(run("(and True True False)") == Expression(false));
+
+  REQUIRE(run("(or True True)") == Expression(true));
+  REQUIRE(run("(or True False)") == Expression(true));
+  REQUIRE(run("(or False True)") == Expression(true));
+  REQUIRE(run("(or False False)") == Expression(false));
+  REQUIRE(run("(or True True False)") == Expression(true));
+}
+
+TEST_CASE( "Test some semantically invalid expresions", "[interpreter]" ) {
+  
+  std::vector<std::string> programs = {"(@ none)", "(- 1 1 2)", "(define if 1)"};//  "(define pi 3.14)"}; 
+    for(auto s : programs){
+      Interpreter interp;
+
+      std::istringstream iss(s);
+      
+      bool ok = interp.parse(iss);
+      REQUIRE(ok == true);
+
+      REQUIRE_THROWS_AS(interp.eval(), InterpreterSemanticError);
+    }
+
+}
+
+TEST_CASE( "Comments", "[interpreter]" ) {
+
+
+  {
+    std::string program = "; hi im a cow\n(begin (define answer 42)\n(answer))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(42.));
+  }
+
+  {
+    std::string program = "; hi im a cow\n(begin (define answer 42)\n; not you\n(answer))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(42.));
+  }
+  
+}
+
+
+TEST_CASE( "semamtical", "[interpreter]" ) {
+
+  { 
+    std::string program = "(+ a 2)";
+    Interpreter interp;
+
+    std::istringstream iss(program);
+    
+    bool ok = interp.parse(iss);
+    REQUIRE(ok == true);
+
+    REQUIRE_THROWS_AS(interp.eval(), InterpreterSemanticError);
+  }
+
+  { 
+    std::string program = "(begin (define x 3) (define x 4))";
+    Interpreter interp;
+
+    std::istringstream iss(program);
+    
+    bool ok = interp.parse(iss);
+    REQUIRE(ok == true);
+
+    REQUIRE_THROWS_AS(interp.eval(), InterpreterSemanticError);
+  }
+
+  { 
+    std::string program = "(define 3 4)";
+    Interpreter interp;
+
+    std::istringstream iss(program);
+    
+    bool ok = interp.parse(iss);
+    REQUIRE(ok == true);
+
+    REQUIRE_THROWS_AS(interp.eval(), InterpreterSemanticError);
+  }
+
+}
+
+
+TEST_CASE( "Extra", "[interpreter]" ) {
+
+  {
+    std::string program = "(begin (define x 3) (- x))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(-3.));
+  }
+
+  { 
+    std::string program = "(= 1)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+  { 
+    std::string program = "(< 1)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+  { 
+    std::string program = "(> 1)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+  { 
+    std::string program = "(<= 1)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+  { 
+    std::string program = "(>= 1)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+  { 
+    std::string program = "(and True)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+  { 
+    std::string program = "(or True)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+  { 
+    std::string program = "(not True False)";
+    Expression failed = failed_run(program);
+    REQUIRE(failed == true);
+  }
+
+  { 
+    std::string program = "(begin (define x True) (not x))";
+    Expression result = run(program);
+    REQUIRE(result == Expression(false));
+  }
+}
