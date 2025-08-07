@@ -350,6 +350,25 @@ if (op == "define")
     argValues[0].m_numberValue = argValues[1].getNumber();
     variable_name = argValues[0].m_symbolValue;
   }
+  else if(argValues[1].isSymbol()){
+    bool found = true;
+    Expression expr;
+     try
+    {
+     expr = env.get(argValues[1].m_symbolValue);
+    }
+  catch(...)
+    {
+      found = false;
+      std::cout << "not found";
+    }
+    if(found){
+      argValues[0].m_numberValue = expr.m_numberValue;
+      argValues[0].m_boolValue = expr.m_boolValue;
+      variable_name = argValues[0].m_symbolValue;
+      
+    }
+  }
   static const std::unordered_set<std::string> validOperators = {
     "not",
     "and",
@@ -382,6 +401,9 @@ if (op == "define")
   {
     valid = true;
   }
+
+ 
+  
   
   if (!valid)
   {
@@ -801,7 +823,7 @@ if (op == "=") {
 if (op == "and") {
   if (argValues.size() < 2)
   {
-    throw InterpreterSemanticError("Expected number");
+    throw InterpreterSemanticError("Expected hhh");
   }
 
   bool result = argValues[0].m_boolValue;
@@ -814,10 +836,11 @@ if (op == "and") {
         {
           expr = env.get(arg.getSymbol());
           number = expr.m_boolValue;
+          //std::cout << number;
         }
         catch(...)
         {
-          throw InterpreterSemanticError("Expected number");
+          throw InterpreterSemanticError("Expected boolll");
         }
         
       }
