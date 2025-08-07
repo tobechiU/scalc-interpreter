@@ -48,6 +48,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 # build test driver executable
 add_executable(unit_tests catch.hpp unit_tests.cpp ${LIB_SOURCE} ${LIB_TEST_SOURCE})
 add_executable(interpreter_Line_main Line_interperter.cpp ${LIB_SOURCE} ${LIB_TEST_SOURCE})
+add_executable(interpreter_File_main File_interperter.cpp ${LIB_SOURCE} ${LIB_TEST_SOURCE})
 
 # enable testing
 include(CTest)
