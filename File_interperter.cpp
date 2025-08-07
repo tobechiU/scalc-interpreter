@@ -1,6 +1,7 @@
 #include "interpreter_semantic_error.hpp"
 #include "interpreter.hpp"
 #include "expression.hpp"
+#include <fstream>
 #include <iostream>
 
 std::ostream &operator<<(std::ostream &out, const Expression &expr) {
@@ -39,40 +40,37 @@ std::ostream &operator<<(std::ostream &out, const Expression &expr) {
     return out;
 }
 
-int main(){
-    
-    std::string line;
-    std::cout << "Welcome to the Interpreter. Type your expression below.\n";
-    std::cout << "Type 'exit' to quit.\n";
-
-    while (true) {
-        Interpreter interp;
-        std::cout << ">>> ";
-        if (!std::getline(std::cin, line)) {
-            break; // EOF (e.g., Ctrl+D)
-        }
-
-        if (line == "exit") {
-            break;
-        }
-
-        std::istringstream iss(line);
-        bool ok = interp.parse(iss);
-
-        if (!ok) {
-            std::cerr << "Error: Failed to parse input.\n";
-            continue;
-        }
-
-        try {
-            Expression result = interp.eval();
-            std::cout << result << std::endl;  // Requires operator<< for Expression
-        } catch (const std::exception& e) {
-            std::cerr << "Error: Evaluation failed: " << e.what() << "\n";
-        }
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        std::cerr << "Usage: interpreter_main <filename>\n";
+        return 1;
     }
 
-    std::cout << "Goodbye!\n";
-    return 0;
+    std::cout << "Trying to open file: " << argv[1] << std::endl;
 
+    std::ifstream file(argv[1]);
+    if (!file) {
+        std::cerr << "Error: Cannot open file " << argv[1] << "\n";
+        return 1;
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string input = buffer.str();
+
+    std::istringstream iss(input);
+
+    Interpreter interp;
+    
+    bool ok = interp.parse(iss);
+    if(!ok){
+    std::cerr << "Failed to parse file" << std::endl; 
+    }
+
+    Expression result;
+    result = interp.eval();
+
+    std::cout << result << std::endl;
+
+    return 0;
 }
