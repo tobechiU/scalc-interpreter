@@ -823,7 +823,7 @@ if (op == "=") {
 if (op == "and") {
   if (argValues.size() < 2)
   {
-    throw InterpreterSemanticError("Expected hhh");
+    throw InterpreterSemanticError("Expected bool");
   }
 
   bool result = argValues[0].m_boolValue;
@@ -840,7 +840,7 @@ if (op == "and") {
         }
         catch(...)
         {
-          throw InterpreterSemanticError("Expected boolll");
+          throw InterpreterSemanticError("Expected bool");
         }
         
       }
@@ -855,7 +855,7 @@ if (op == "and") {
 if (op == "or") {
   if (argValues.size() < 2)
   {
-    throw InterpreterSemanticError("Expected number");
+    throw InterpreterSemanticError("Expected bool");
   }
 
   bool result = argValues[0].m_boolValue;
@@ -871,7 +871,7 @@ if (op == "or") {
         }
         catch(...)
         {
-          throw InterpreterSemanticError("Expected number");
+          throw InterpreterSemanticError("Expected bool");
         }
         
       }
@@ -886,7 +886,7 @@ if (op == "or") {
 if (op == "not") {
   if (argValues.size() != 1)
   {
-    throw InterpreterSemanticError("Expected number");
+    throw InterpreterSemanticError("Expected bool");
   }
 
     Expression expr;
@@ -900,7 +900,7 @@ if (op == "not") {
         }
         catch(...)
         {
-          throw InterpreterSemanticError("Expected number");
+          throw InterpreterSemanticError("Expected bool");
         }
     }else if (argValues[0].isBool())
     {
@@ -910,6 +910,7 @@ if (op == "not") {
   }
   throw InterpreterSemanticError("Unknown operator: " + op);
 }
+
 
 
 
