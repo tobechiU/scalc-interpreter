@@ -21,6 +21,11 @@ The language supports:
 - Support for unary, binary, and m-ary procedures
 - Unit tested with Catch2 and memory safe (Valgrind-verified)
 
+### 🚀 Executables
+The project includes two interpreter executables:
+- Line interpreter: An interactive REPL (interpreter_Line_main) for testing and experimenting with expressions line-by-line.
+- File interpreter: A file-based interpreter (interpreter_File_main) that takes a .txt file as input and evaluates the contained expression(s).
+
 ### 📁 Example
 ```lisp
 (begin
