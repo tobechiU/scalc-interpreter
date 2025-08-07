@@ -16,7 +16,7 @@ The language supports:
 
 ### 🔧 Features
 - AST construction from tokenized S-expression input
-- Evaluation using post-order traversal
+- Evaluation using post-order traversal with recursive algorithm 
 - Scoped symbol environment with support for side effects
 - Support for unary, binary, and m-ary procedures
 - Unit tested with Catch2 and memory safe (Valgrind-verified)
