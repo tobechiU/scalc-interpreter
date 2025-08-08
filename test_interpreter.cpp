@@ -1,7 +1,5 @@
 /*
  * Initial Tests for Interpeter
- *
- * TODO: write your own
  */
 #include "catch.hpp"
 
